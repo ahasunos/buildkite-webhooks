@@ -1,0 +1,39 @@
+project:
+  alias: example-repo-name
+
+# Slack channel in Chef Software slack to send notifications about build failures, etc
+slack:
+  notify_channel:
+    - example-repo-name-notify
+
+github:
+  delete_branch_on_merge: true
+  minor_bump_labels:
+    - "X-bump-minor-version"
+  major_bump_labels:
+    - "X-bump-major-version"
+
+pipelines:
+  - verify
+  - docker/build
+
+subscriptions:
+  - workload: pull_request_merged:{{github_repo}}:{{release_branch}}:*
+    actions:
+    - built_in:bump_version:
+        ignore_labels:
+          - "X-skip-version-bump"
+          - "X-skip-all"
+          - "X-docs-only"
+    - bash:.expeditor/update_version.sh:
+        only_if: built_in:bump_version
+    - built_in:update_changelog:
+        ignore_labels:
+          - "X-skip-changelog"
+          - "X-skip-all"
+          - "X-docs-only"
+    - trigger_pipeline:docker/build:
+        ignore_labels:
+          - "X-skip-all"
+          - "X-docs-only"
+          - "X-skip-docker"
